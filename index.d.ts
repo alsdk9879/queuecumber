@@ -1,18 +1,26 @@
 declare class Queuecumber {
+    version: string;
     private items;
     private breakWhenError;
-    private runFlagCallback?;
-    theEnd: () => void;
+    private batchSize;
+    private onProgress?;
+    private _isRunning;
+    private _lastResult;
+    private totalBatches;
+    private completedBatches;
     constructor(option?: {
         breakWhenError?: boolean;
-        runFlagCallback?: (flag: boolean) => void;
+        onProgress?: (progress: {
+            totalBatches: number;
+            completedBatches: number;
+            lastResult: any;
+        }) => void;
+        batchSize?: number;
     });
-    add(q: () => Promise<any>): void;
-    _runFlag: boolean;
-    _lastResult: any;
-    get runFlag(): boolean;
-    set runFlag(value: boolean);
-    private run;
+    get isRunning(): boolean;
+    set isRunning(value: boolean);
+    add(jobs: (() => Promise<any>)[], batchSize?: number): Promise<void>;
+    private processNext;
 }
 export default Queuecumber;
 //# sourceMappingURL=index.d.ts.map

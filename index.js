@@ -1,54 +1,93 @@
 class Queuecumber {
-    items = [];
-    breakWhenError = false;
-    runFlagCallback;
-    theEnd = () => {
-        console.log("Queue is empty now.");
-    };
+    version = "1.0.3"; // 버전 정보
+    items = []; // 작업 큐
+    breakWhenError = false; // 에러 발생 시 중단 여부
+    batchSize = 1; // 한 번에 처리할 작업 수
+    onProgress; // 진행 상황 콜백
+    _isRunning = false; // 실행 중인지 여부
+    _lastResult = null; // 마지막 작업 결과
+    totalBatches = 0; // 총 작업 묶음 수
+    completedBatches = 0; // 완료된 작업 묶음 수
     constructor(option) {
         this.breakWhenError = option?.breakWhenError || false;
-        if (option?.runFlagCallback) {
-            this.runFlagCallback = option?.runFlagCallback;
+        this.batchSize = option?.batchSize || 1;
+        if (option?.onProgress) {
+            this.onProgress = option?.onProgress;
         }
     }
-    add(q) {
-        this.items.push(q);
-        if (this.runFlag)
-            return;
-        this.run();
+    // 실행 중인 작업이 있는지 여부
+    get isRunning() {
+        return this._isRunning;
     }
-    _runFlag = false;
-    _lastResult = null;
-    get runFlag() {
-        return this._runFlag;
+    // 실행 상태 변경 시 콜백 호출
+    set isRunning(value) {
+        this._isRunning = value;
+        if (this.onProgress && value === false) {
+            this.onProgress(this._lastResult);
+        }
     }
-    set runFlag(value) {
-        this._runFlag = value;
-        if (this.runFlagCallback && value === false)
-            this.runFlagCallback(this._lastResult);
+    // 작업 배열을 한 번에 추가
+    async add(jobs, batchSize) {
+        const size = batchSize || this.batchSize;
+        // jobs를 batchSize 단위로 잘라서 배열로 묶기
+        for (let i = 0; i < jobs.length; i += size) {
+            const batch = jobs.slice(i, i + size);
+            this.items.push(batch);
+        }
+        this.totalBatches = this.items.length; // 총 작업 묶음 수 업데이트
+        // 실행 중이 아니면 시작
+        if (!this.isRunning) {
+            this.isRunning = true;
+            this.completedBatches = 0; // 완료된 작업 묶음 수 초기화
+            await this.processNext(); // 다음 작업 묶음 처리 시작
+        }
     }
-    async run() {
+    // 다음 작업 묶음 처리
+    async processNext() {
+        // 큐가 비었으면 종료
         if (this.items.length === 0) {
-            this.runFlag = false;
+            this.isRunning = false; // 실행 종료 (콜백 트리거)
             return;
         }
-        const q = this.items.shift();
-        if (!q) {
-            this.runFlag = false;
+        // 첫 번째 배치 꺼내기
+        const batch = this.items.shift();
+        if (!batch) {
+            this.processNext();
             return;
         }
         try {
-            this.runFlag = true;
-            this._lastResult = await q();
-            this.run();
+            // 이번 배치 병렬 실행
+            const results = await Promise.all(batch.map(async (job) => {
+                try {
+                    return await job();
+                }
+                catch (err) {
+                    if (this.breakWhenError) {
+                        throw err;
+                    }
+                    return null; // 에러 무시
+                }
+            }));
+            // 마지막 결과 저장 (배치의 마지막 작업 결과)
+            this._lastResult = results[results.length - 1];
+            this.completedBatches++; // 완료된 작업 묶음 수 증가
+            // 진행 상황 콜백 호출
+            if (this.onProgress) {
+                this.onProgress({
+                    totalBatches: this.totalBatches,
+                    completedBatches: this.completedBatches,
+                    lastResult: this._lastResult,
+                });
+            }
+            console.log(`Batch completed. Remaining batches: ${this.items.length}`);
         }
         catch (err) {
-            if (this.breakWhenError) {
-                this.runFlag = false;
-                throw err;
-            }
-            this.run();
+            // breakWhenError가 true면 여기서 중단
+            this.isRunning = false;
+            throw err;
         }
+        // 다음 배치 처리
+        await this.processNext();
     }
 }
 export default Queuecumber;

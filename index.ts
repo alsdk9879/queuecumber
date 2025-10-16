@@ -1,40 +1,47 @@
 class Queuecumber {
+    version = "1.0.3"; // 버전 정보
+
     private items: (() => Promise<any>)[][] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
-    private runFlagCallback?: (flag: boolean) => void; // 실행 완료 콜백
     private batchSize: number = 1; // 한 번에 처리할 작업 수
+    private onProgress?: (progress: {
+        totalBatches: number; // 총 작업 묶음 수
+        completedBatches: number; // 완료된 작업 묶음 수
+        lastResult: any; // 마지막 작업 결과
+    }) => void; // 진행 상황 콜백
 
-    private _runFlag = false; // 실행 중인지 여부
+    private _isRunning = false; // 실행 중인지 여부
     private _lastResult: any = null; // 마지막 작업 결과
-
-    // 작업 완료 시 호출되는 콜백 (기본 구현)
-    public theEnd = () => {
-        console.log("Queue is empty now.");
-    };
+    private totalBatches: number = 0; // 총 작업 묶음 수
+    private completedBatches: number = 0; // 완료된 작업 묶음 수
 
     constructor(option?: {
         breakWhenError?: boolean;
-        runFlagCallback?: (flag: boolean) => void;
+        onProgress?: (progress: {
+            totalBatches: number;
+            completedBatches: number;
+            lastResult: any;
+        }) => void;
         batchSize?: number;
     }) {
         this.breakWhenError = option?.breakWhenError || false;
         this.batchSize = option?.batchSize || 1;
 
-        if (option?.runFlagCallback) {
-            this.runFlagCallback = option?.runFlagCallback;
+        if (option?.onProgress) {
+            this.onProgress = option?.onProgress;
         }
     }
 
     // 실행 중인 작업이 있는지 여부
-    get runFlag() {
-        return this._runFlag;
+    get isRunning() {
+        return this._isRunning;
     }
 
     // 실행 상태 변경 시 콜백 호출
-    set runFlag(value: boolean) {
-        this._runFlag = value;
-        if (this.runFlagCallback && value === false) {
-            this.runFlagCallback(this._lastResult);
+    set isRunning(value: boolean) {
+        this._isRunning = value;
+        if (this.onProgress && value === false) {
+            this.onProgress(this._lastResult);
         }
     }
 
@@ -48,9 +55,12 @@ class Queuecumber {
             this.items.push(batch);
         }
 
+        this.totalBatches = this.items.length; // 총 작업 묶음 수 업데이트
+
         // 실행 중이 아니면 시작
-        if (!this.runFlag) {
-            this.runFlag = true;
+        if (!this.isRunning) {
+            this.isRunning = true;
+            this.completedBatches = 0; // 완료된 작업 묶음 수 초기화
             await this.processNext(); // 다음 작업 묶음 처리 시작
         }
     }
@@ -59,8 +69,7 @@ class Queuecumber {
     private async processNext() {
         // 큐가 비었으면 종료
         if (this.items.length === 0) {
-            this.runFlag = false; // 실행 종료 (콜백 트리거)
-            this.theEnd();
+            this.isRunning = false; // 실행 종료 (콜백 트리거)
             return;
         }
 
@@ -89,11 +98,23 @@ class Queuecumber {
 
             // 마지막 결과 저장 (배치의 마지막 작업 결과)
             this._lastResult = results[results.length - 1];
+            this.completedBatches++; // 완료된 작업 묶음 수 증가
 
-            console.log(`✅ Batch 완료 (${batch.length}개)`);
+            // 진행 상황 콜백 호출
+            if (this.onProgress) {
+                this.onProgress({
+                    totalBatches: this.totalBatches,
+                    completedBatches: this.completedBatches,
+                    lastResult: this._lastResult,
+                });
+            }
+
+            console.log(
+                `Batch completed. Remaining batches: ${this.items.length}`
+            );
         } catch (err) {
             // breakWhenError가 true면 여기서 중단
-            this.runFlag = false;
+            this.isRunning = false;
             throw err;
         }
 
