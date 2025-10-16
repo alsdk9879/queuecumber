@@ -5,20 +5,19 @@ declare class Queuecumber {
     private batchSize;
     private onProgress?;
     private _isRunning;
-    private _lastResult;
     private totalBatches;
     private completedBatches;
+    private completed;
     constructor(option?: {
         breakWhenError?: boolean;
         onProgress?: (progress: {
             totalBatches: number;
             completedBatches: number;
-            lastResult: any;
+            completed?: any[];
         }) => void;
         batchSize?: number;
     });
     get isRunning(): boolean;
-    set isRunning(value: boolean);
     add(jobs: (() => Promise<any>)[], batchSize?: number): Promise<void>;
     private processNext;
 }

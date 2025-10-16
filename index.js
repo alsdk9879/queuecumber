@@ -1,30 +1,23 @@
 class Queuecumber {
-    version = "1.0.3"; // 버전 정보
+    version = "1.0.4"; // 버전 정보
     items = []; // 작업 큐
     breakWhenError = false; // 에러 발생 시 중단 여부
     batchSize = 1; // 한 번에 처리할 작업 수
     onProgress; // 진행 상황 콜백
     _isRunning = false; // 실행 중인지 여부
-    _lastResult = null; // 마지막 작업 결과
     totalBatches = 0; // 총 작업 묶음 수
     completedBatches = 0; // 완료된 작업 묶음 수
+    completed = []; // 완료된 작업 결과 배열
     constructor(option) {
         this.breakWhenError = option?.breakWhenError || false;
         this.batchSize = option?.batchSize || 1;
         if (option?.onProgress) {
-            this.onProgress = option?.onProgress;
+            this.onProgress = option.onProgress;
         }
     }
     // 실행 중인 작업이 있는지 여부
     get isRunning() {
         return this._isRunning;
-    }
-    // 실행 상태 변경 시 콜백 호출
-    set isRunning(value) {
-        this._isRunning = value;
-        if (this.onProgress && value === false) {
-            this.onProgress(this._lastResult);
-        }
     }
     // 작업 배열을 한 번에 추가
     async add(jobs, batchSize) {
@@ -36,9 +29,18 @@ class Queuecumber {
         }
         this.totalBatches = this.items.length; // 총 작업 묶음 수 업데이트
         // 실행 중이 아니면 시작
-        if (!this.isRunning) {
-            this.isRunning = true;
+        if (!this._isRunning) {
+            this._isRunning = true; // 실행 시작
             this.completedBatches = 0; // 완료된 작업 묶음 수 초기화
+            this.completed = []; // 완료된 작업 결과 배열 초기화
+            // 시작 시 진행 상황 콜백 호출
+            if (this.onProgress) {
+                this.onProgress({
+                    totalBatches: this.totalBatches,
+                    completedBatches: this.completedBatches,
+                    completed: [...this.completed],
+                });
+            }
             await this.processNext(); // 다음 작업 묶음 처리 시작
         }
     }
@@ -46,7 +48,7 @@ class Queuecumber {
     async processNext() {
         // 큐가 비었으면 종료
         if (this.items.length === 0) {
-            this.isRunning = false; // 실행 종료 (콜백 트리거)
+            this._isRunning = false; // 실행 종료
             return;
         }
         // 첫 번째 배치 꺼내기
@@ -68,22 +70,20 @@ class Queuecumber {
                     return null; // 에러 무시
                 }
             }));
-            // 마지막 결과 저장 (배치의 마지막 작업 결과)
-            this._lastResult = results[results.length - 1];
             this.completedBatches++; // 완료된 작업 묶음 수 증가
+            this.completed.push(...results); // 완료된 작업 결과 배열에 추가
             // 진행 상황 콜백 호출
             if (this.onProgress) {
                 this.onProgress({
                     totalBatches: this.totalBatches,
                     completedBatches: this.completedBatches,
-                    lastResult: this._lastResult,
+                    completed: [...this.completed],
                 });
             }
-            console.log(`Batch completed. Remaining batches: ${this.items.length}`);
         }
         catch (err) {
             // breakWhenError가 true면 여기서 중단
-            this.isRunning = false;
+            this._isRunning = false;
             throw err;
         }
         // 다음 배치 처리
