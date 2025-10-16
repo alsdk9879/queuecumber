@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.3"; // 버전 정보
+    version = "1.0.4"; // 버전 정보
 
     private items: (() => Promise<any>)[][] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
