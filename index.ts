@@ -1,5 +1,5 @@
 class Queuecumber {
-    private items: (() => Promise<any>)[][] = [];
+    private items: (() => Promise<any>)[][] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
     private runFlagCallback?: (flag: boolean) => void; // 실행 완료 콜백
     private batchSize: number = 1; // 한 번에 처리할 작업 수

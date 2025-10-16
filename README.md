@@ -16,6 +16,7 @@ yarn add queuecumber
 ## 📌 Usage
 
 ### Basic uses
+
 ```bash
 import Queuecumber from "queuecumber";
 
@@ -28,6 +29,7 @@ queue.add([job1, job2]);
 ```
 
 ### Option
+
 ```bash
 const queue = new Queuecumber({
     batchSize: 2,           // 한 번에 처리할 작업 수
@@ -39,6 +41,7 @@ const queue = new Queuecumber({
 ```
 
 ### Customizing
+
 ```bash
 // theEnd
 queue.theEnd = () => {
@@ -47,13 +50,13 @@ queue.theEnd = () => {
 ```
 
 ### Check status
+
 ```bash
 console.log(queue.runFlag); // 실행 중인지 여부
 ```
 
 ## 📌 Practical Example
 
-### Check status
 ```bash
 const jobs = [];
 
