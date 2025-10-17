@@ -1,64 +1,56 @@
 # Queuecumber
 
-Queuecumber는 **작업을 순서대로 처리**하는 JavaScript/TypeScript 큐 라이브러리입니다.  
-배치 단위 실행, 에러 처리 옵션, 작업 완료 콜백 등을 지원합니다.
+Queuecumber is a JavaScript/TypeScript queue library for processing tasks sequentially.
+It supports batch execution, error handling options, and progress callbacks.
 
 ## 📌 Getting started
 
-```bash
+```js
 # npm
 npm install queuecumber
-
-# yarn
-yarn add queuecumber
 ```
 
 ## 📌 Usage
 
-### Basic uses
+### Basic usage
 
-```bash
+```js
 import Queuecumber from "queuecumber";
 
 const queue = new Queuecumber();
 
-const job1 = () => Promise.resolve("job1 완료");
-const job2 = () => Promise.resolve("job2 완료");
+const job1 = () => Promise.resolve("job1 completed");
+const job2 = () => Promise.resolve("job2 completed");
 
 queue.add([job1, job2]);
 ```
 
 ### Option
 
-Queuecumber는 생성 시 옵션을 설정할 수 있습니다.
+You can configure options when creating a Queuecumber instance.
 
-```bash
+```ts
 const queue = new Queuecumber({
-    batchSize: 2,           // 한 번에 처리할 작업 수
-    breakWhenError: false,  // 에러 발생 시 중단 여부
-    onProgress: (progress) => {
-        console.log(`진행 상황 : ${progress.completedBatches}/${progress.totalBatches}`);
-        console.log("완료된 작업들 : ", progress.completed);
-    }
+    breakWhenError?: boolean;
+    onProgress?: (progress: {
+        totalBatches: number;
+        completedBatches: number;
+        completed?: any[];
+    }) => void;
+    batchSize?: number; // must be ≥ 1, default is 1
 });
 ```
 
 ### 🔍 OnProgress
 
-onProgress는 작업 시작 시, 각 배치(batch)가 완료될 때마다 실행됩니다.
+The onProgress callback runs when the queue starts and after each batch is completed.
 
-| 속성               | 설명                                  |
-| ------------------ | ------------------------------------- |
-| `totalBatches`     | 전체 배치 수                          |
-| `completedBatches` | 완료된 배치 수                        |
-| `completed`        | 지금까지 완료된 모든 작업의 결과 배열 |
-
-```bash
+```js
 const queue = new Queuecumber({
     batchSize: 2,
     onProgress: (progress) => {
         console.log(progress);
-    }
+    },
 });
 
 await queue.add([
@@ -76,89 +68,91 @@ await queue.add([
 
 ### Check status
 
-```bash
-console.log(queue.isRunning); // 실행 중인지 여부 (true/false)
+```js
+console.log(queue.isRunning); // true or false
 ```
 
 ## ❗Handling Errors
 
-Queuecumber는 에러 발생 시 중단할지 계속 진행할지를 직접 선택할 수 있습니다.
+Queuecumber lets you choose whether to stop on error or continue execution when an error occurs.
 <br>
-옵션 `breakWhenError`로 제어합니다.
+This behavior is controlled via the breakWhenError option.
 
-### ✅ 에러 무시하고 계속 실행 (breakWhenError: false)
+### ✅ Continue execution even on errors (breakWhenError: false)
 
-```bash
+```js
 const queue = new Queuecumber({
-  breakWhenError: false, // 기본값
-  onProgress: (progress) => {
-    console.log("완료된 작업: ", progress.completed);
-  }
+    breakWhenError: false, // default
+    onProgress: (progress) => {
+        console.log("Completed jobs: ", progress.completed);
+    },
 });
 
 const jobs = [
-  () => Promise.resolve("첫 번째 성공"),
-  () => Promise.reject("두 번째 실패 ❌"),
-  () => Promise.resolve("세 번째 성공 ✅"),
+    () => Promise.resolve("First success"),
+    () => Promise.reject("Second failed ❌"),
+    () => Promise.resolve("Third success ✅"),
 ];
 
 await queue.add(jobs);
 ```
 
-결과
+Result
 
-```bash
-완료된 작업: []
-완료된 작업: ["첫 번째 성공", null, "세 번째 성공"]
-// 에러는 null로 처리되어 계속 진행함.
+```js
+Completed jobs: []
+Completed jobs: ["First success", null, "Third success"]
+// Errors are treated as null and execution continues.
 ```
 
-### 🛑 에러 발생 시 즉시 중단 (breakWhenError: true)
+### 🛑 Stop immediately on error (breakWhenError: true)
 
-```bash
+```js
 const queue = new Queuecumber({
-  breakWhenError: true,
-  onProgress: (progress) => {
-    console.log(`완료된 작업: `, progress.completed);
-  }
+    breakWhenError: true,
+    onProgress: (progress) => {
+        console.log(`Completed jobs:: `, progress.completed);
+    },
 });
 
 const jobs = [
-  () => Promise.resolve("첫 번째 성공"),
-  () => Promise.reject("두 번째 실패 ❌"),
-  () => Promise.resolve("세 번째는 실행되지 않음 🚫"),
+    () => Promise.resolve("First success"),
+    () => Promise.reject("Second failed ❌"),
+    () => Promise.resolve("Third will not run 🚫"),
 ];
 
 try {
-  await queue.add(jobs);
+    await queue.add(jobs);
 } catch (err) {
-  console.error("실행 중단됨:", err);
+    console.error("Execution stopped: ", err);
 }
 ```
 
-결과
+Result
 
-```bash
-완료된 작업: []
-완료된 작업: ["첫 번째 성공"]
-실행 중단됨: 두 번째 실패 ❌
-// 에러 발생 시 즉시 중단되어 세 번째 작업은 실행되지 않음.
+```js
+Completed jobs: []
+Completed jobs: ["First success"]
+Execution stopped: Second failed ❌
+// Stops immediately on error, so the third job is never executed.
 ```
 
 ## 📌 Practical Example
 
-```bash
+```js
 const queue = new Queuecumber({
-  batchSize: 5,
-  onProgress: (progress) => {
-    console.log(`Batch ${progress.completedBatches}/${progress.totalBatches} 완료`);
-  },
+    batchSize: 5,
+    onProgress: (progress) => {
+        console.log(
+            `Batch ${progress.completedBatches}/${progress.totalBatches} 완료`
+        );
+    },
 });
 
 const jobs = [];
 
 for (let i = 0; i < 100; i++) {
-    jobs.push(() => fetch(`/api/data/${i}`).then(res => res.json()));
+    jobs.push(() => fetch(`/api/data/${i}`).then((res) => res.json()));
 }
 
 queue.add(jobs);
@@ -166,13 +160,13 @@ queue.add(jobs);
 
 ## 📌 Features
 
-• 배치 단위 처리(batchSize): 동시에 처리할 작업 수 지정
+• Batch processing (batchSize) — control how many jobs run in parallel
 <br>
-• 에러 발생 시 중단 여부(breakWhenError): 에러 발생 시 중단 여부 선택
+• Error control (breakWhenError) — choose whether to stop or continue on failure
 <br>
-• 진행 상황 추적(onProgress): 실시간으로 작업 진행 상황 확인
+• Progress tracking (onProgress) — monitor task progress in real time
 <br>
-• 실행 상태 확인(isRunning): 현재 큐가 실행 중인지 확인
+• Execution state (isRunning) — check whether the queue is currently running
 
 ## 📜 License
 

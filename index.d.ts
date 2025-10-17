@@ -4,7 +4,7 @@ declare class Queuecumber {
     private breakWhenError;
     private batchSize;
     private onProgress?;
-    private _isRunning;
+    private isRunning;
     private totalBatches;
     private completedBatches;
     private completed;
@@ -17,8 +17,7 @@ declare class Queuecumber {
         }) => void;
         batchSize?: number;
     });
-    get isRunning(): boolean;
-    add(jobs: (() => Promise<any>)[], batchSize?: number): Promise<void>;
+    add(jobs: (() => Promise<any>)[]): void;
     private processNext;
 }
 export default Queuecumber;
