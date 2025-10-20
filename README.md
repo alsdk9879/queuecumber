@@ -60,7 +60,6 @@ await queue.add([
     () => Promise.resolve("Job 4"),
 ]);
 
-// 출력:
 // { totalBatches: 2, completedBatches: 0, completed: [] }
 // { totalBatches: 2, completedBatches: 1, completed: ["Job 1", "Job 2"] }
 // { totalBatches: 2, completedBatches: 2, completed: ["Job 1", "Job 2", "Job 3", "Job 4"] }
