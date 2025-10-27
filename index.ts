@@ -42,7 +42,8 @@ class Queuecumber {
         let addedBatches = 0; // 새로 추가된 배치 수 카운트
 
         // 처리가 처음이라면 초기화
-        if (!this.isRunning) {
+        const isFirstRun = !this.isRunning;
+        if (isFirstRun) {
             this.isRunning = true;
             this.totalBatches = 0;
             this.completedBatches = 0;
@@ -74,7 +75,7 @@ class Queuecumber {
         this.totalBatches += addedBatches; // 총 작업 묶음 수 업데이트
 
         // 시작 시 진행 상황 콜백 호출
-        if (!this.isRunning) {
+        if (isFirstRun) {
             if (this.onProgress) {
                 this.onProgress({
                     totalBatches: this.totalBatches,
