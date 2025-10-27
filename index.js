@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.5"; // 버전 정보
+    version = "1.0.7"; // 버전 정보
     items = []; // 작업 큐
     breakWhenError = false; // 에러 발생 시 중단 여부
     batchSize = 1; // 한 번에 처리할 작업 수
@@ -22,6 +22,13 @@ class Queuecumber {
     add(jobs) {
         const size = this.batchSize;
         let addedBatches = 0; // 새로 추가된 배치 수 카운트
+        // 처리가 처음이라면 초기화
+        if (!this.isRunning) {
+            this.isRunning = true;
+            this.totalBatches = 0;
+            this.completedBatches = 0;
+            this.completed = [];
+        }
         // 마지막 배치가 꽉 차지 않았다면, 채우기
         if (this.items.length > 0) {
             const lastBatch = this.items[this.items.length - 1]; // 마지막 배치
@@ -41,12 +48,8 @@ class Queuecumber {
             addedBatches++; // 새로 추가된 배치만 카운트
         }
         this.totalBatches += addedBatches; // 총 작업 묶음 수 업데이트
-        // 실행 중이 아니면 시작
+        // 시작 시 진행 상황 콜백 호출
         if (!this.isRunning) {
-            this.isRunning = true; // 실행 시작
-            this.completedBatches = 0; // 완료된 작업 묶음 수 초기화
-            this.completed = []; // 완료된 작업 결과 배열 초기화
-            // 시작 시 진행 상황 콜백 호출
             if (this.onProgress) {
                 this.onProgress({
                     totalBatches: this.totalBatches,
@@ -54,7 +57,7 @@ class Queuecumber {
                     completed: this.completed,
                 });
             }
-            this.processNext(); // 다음 작업 묶음 처리 시작
+            this.processNext();
         }
     }
     // 다음 작업 묶음 처리

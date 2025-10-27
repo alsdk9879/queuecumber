@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.5"; // 버전 정보
+    version = "1.0.7"; // 버전 정보
 
     private items: (() => Promise<any>)[][] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
@@ -74,16 +74,14 @@ class Queuecumber {
         this.totalBatches += addedBatches; // 총 작업 묶음 수 업데이트
 
         // 시작 시 진행 상황 콜백 호출
-        if (this.completedBatches === 0 && this.onProgress) {
-            this.onProgress({
-                totalBatches: this.totalBatches,
-                completedBatches: this.completedBatches,
-                completed: this.completed,
-            });
-        }
-
-        // 첫 시작이면 processNext 실행
-        if (this.completedBatches === 0) {
+        if (!this.isRunning) {
+            if (this.onProgress) {
+                this.onProgress({
+                    totalBatches: this.totalBatches,
+                    completedBatches: this.completedBatches,
+                    completed: this.completed,
+                });
+            }
             this.processNext();
         }
     }
@@ -93,9 +91,6 @@ class Queuecumber {
         // 큐가 비었으면 종료
         if (this.items.length === 0) {
             this.isRunning = false; // 실행 종료
-            this.totalBatches = 0;
-            this.completedBatches = 0;
-            this.completed = [];
             return;
         }
 
