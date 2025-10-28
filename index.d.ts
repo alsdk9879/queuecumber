@@ -17,8 +17,8 @@ declare class Queuecumber {
         }) => void;
         batchSize?: number;
     });
-    add(jobs: (() => Promise<any>)[]): void;
-    private processNext;
+    add(jobs: (() => Promise<any>)[] | (() => Promise<any>)): void;
+    processNext(): Promise<unknown> | undefined;
 }
 export default Queuecumber;
 //# sourceMappingURL=index.d.ts.map

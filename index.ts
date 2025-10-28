@@ -1,7 +1,7 @@
 class Queuecumber {
-    version = "1.0.7"; // 버전 정보
+    version = "1.0.8"; // 버전 정보
 
-    private items: (() => Promise<any>)[][] = []; // 작업 큐
+    private items: (() => Promise<any>)[] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
     private batchSize: number = 1; // 한 번에 처리할 작업 수
     private onProgress?: (progress: {
@@ -37,9 +37,8 @@ class Queuecumber {
     }
 
     // 작업 배열을 한 번에 추가
-    add(jobs: (() => Promise<any>)[]) {
+    add(jobs: (() => Promise<any>)[] | (() => Promise<any>)) {
         const size = this.batchSize;
-        let addedBatches = 0; // 새로 추가된 배치 수 카운트
 
         // 처리가 처음이라면 초기화
         const isFirstRun = !this.isRunning;
@@ -50,88 +49,95 @@ class Queuecumber {
             this.completed = [];
         }
 
-        // 마지막 배치가 꽉 차지 않았다면, 채우기
-        if (this.items.length > 0) {
-            const lastBatch = this.items[this.items.length - 1]; // 마지막 배치
+        // jobs가 배열인지 확인하고, 아니면 배열로 변환
+        const jobsArray = Array.isArray(jobs) ? jobs : [jobs];
 
-            // lastBatch가 존재하는지 명시적으로 체크
-            if (lastBatch && lastBatch.length < size) {
-                const remainingSpace = size - lastBatch.length; // 마지막 배치에 남은 공간
+        // 배치로 묶지 않고 그냥 items에 추가
+        this.items.push(...jobsArray);
 
-                if (remainingSpace > 0 && jobs.length > 0) {
-                    const jobsToFill = jobs.splice(0, remainingSpace);
-                    lastBatch.push(...jobsToFill);
-                }
-            }
-        }
+        // // 총 배치 수 업데이트
+        this.totalBatches += Math.ceil(jobsArray.length / size);
 
-        // jobs를 batchSize 단위로 잘라서 배열로 묶기
-        for (let i = 0; i < jobs.length; i += size) {
-            const batch = jobs.slice(i, i + size);
-            this.items.push(batch);
-            addedBatches++; // 새로 추가된 배치만 카운트
-        }
-
-        this.totalBatches += addedBatches; // 총 작업 묶음 수 업데이트
-
-        // 시작 시 진행 상황 콜백 호출
+        // 첫 실행이면 processNext 호출
         if (isFirstRun) {
-            if (this.onProgress) {
-                this.onProgress({
-                    totalBatches: this.totalBatches,
-                    completedBatches: this.completedBatches,
-                    completed: this.completed,
-                });
-            }
-            this.processNext();
+            // for문 모두 끝난 후 실행
+            Promise.resolve().then(() => {
+                // 초기 상태 알림
+                if (this.onProgress) {
+                    this.onProgress({
+                        totalBatches: this.totalBatches,
+                        completedBatches: this.completedBatches,
+                        completed: this.completed,
+                    });
+                }
+                // 첫 번째 배치 처리 시작
+                this.processNext();
+            });
         }
     }
 
     // 다음 작업 묶음 처리
-    private async processNext() {
+    processNext() {
         // 큐가 비었으면 종료
         if (this.items.length === 0) {
             this.isRunning = false; // 실행 종료
             return;
         }
 
-        // 첫 번째 배치 꺼내기
-        const batch = this.items.shift();
+        // batchSize만큼 꺼내기
+        const batch = this.items.splice(0, this.batchSize);
 
-        if (!batch) {
-            this.processNext();
-            return;
-        }
+        return new Promise((resolve) => {
+            let completedCount = 0; // 현재 배치에서 완료된 작업 개수
+            const results = new Array(batch.length); // 결과 저장 배열
 
-        // 이번 배치 병렬 실행
-        const results = await Promise.all(
-            batch.map(async (job) => {
-                try {
-                    return await job();
-                } catch (err) {
-                    if (this.breakWhenError) {
-                        this.isRunning = false;
-                        throw err;
-                    }
-                    return err; // 에러 무시
+            // 배치 완료 처리 공통 함수
+            const handleBatchComplete = () => {
+                this.completedBatches++; // 완료된 배치 수 증가
+                this.completed.push(...results); // 전체 완료 결과에 현재 배치 결과 추가
+
+                // 진행 상황 콜백 호출
+                if (this.onProgress) {
+                    this.onProgress({
+                        totalBatches: this.totalBatches,
+                        completedBatches: this.completedBatches,
+                        completed: this.completed,
+                    });
                 }
-            })
-        );
 
-        this.completedBatches++; // 완료된 작업 묶음 수 증가
-        this.completed.push(...results); // 완료된 작업 결과 배열에 추가
+                resolve(this.completed); // 현재까지 완료된 결과 반환
+                this.processNext(); // 다음 배치 처리
+            };
 
-        // 진행 상황 콜백 호출
-        if (this.onProgress) {
-            this.onProgress({
-                totalBatches: this.totalBatches,
-                completedBatches: this.completedBatches,
-                completed: this.completed,
+            // 배치의 각 작업 처리
+            batch.forEach((job: () => Promise<any>, index: number) => {
+                job()
+                    .then((result) => {
+                        results[index] = result;
+                        completedCount++; // 완료 카운트 증가
+
+                        // 배치의 모든 job이 완료되었는지 확인
+                        if (completedCount === batch.length) {
+                            handleBatchComplete();
+                        }
+                    })
+                    .catch((err) => {
+                        // 에러 처리
+                        if (this.breakWhenError) {
+                            this.isRunning = false; // breakWhenError가 true면 즉시 중단
+                            throw err;
+                        }
+
+                        // breakWhenError가 false면 에러를 결과에 포함하고 계속 진행
+                        results[index] = err;
+                        completedCount++;
+
+                        if (completedCount === batch.length) {
+                            handleBatchComplete();
+                        }
+                    });
             });
-        }
-
-        // 다음 배치 처리
-        this.processNext();
+        });
     }
 }
 

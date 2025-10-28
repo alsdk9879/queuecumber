@@ -6,7 +6,6 @@ It supports batch execution, error handling options, and progress callbacks.
 ## 📌 Getting started
 
 ```js
-# npm
 npm install queuecumber
 ```
 
@@ -65,12 +64,6 @@ await queue.add([
 // { totalBatches: 2, completedBatches: 2, completed: ["Job 1", "Job 2", "Job 3", "Job 4"] }
 ```
 
-### Check status
-
-```js
-console.log(queue.isRunning); // true or false
-```
-
 ## ❗Handling Errors
 
 Queuecumber lets you choose whether to stop on error or continue execution when an error occurs.
@@ -100,8 +93,8 @@ Result
 
 ```js
 Completed jobs: []
-Completed jobs: ["First success", null, "Third success"]
-// Errors are treated as null and execution continues.
+Completed jobs: ["First success", "Second failed ❌", "Third success"]
+// Errors are stored as error objects and execution continues.
 ```
 
 ### 🛑 Stop immediately on error (breakWhenError: true)
