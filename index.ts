@@ -15,12 +15,12 @@ class Queuecumber {
     private completed: any[] = []; // 완료된 작업 결과 배열
     private runningBatches: (() => Promise<any>)[] = []; // 현재 실행 중인 작업 묶음 수
 
-    get batchToProcess() {
+    private get batchToProcess() {
         // 총 배치 수 업데이트
         return Math.ceil(this.items.length / this.batchSize);
     }
 
-    get batchProcessFinished() {
+    private get batchProcessFinished() {
         let completedCount = Object.keys(this.completed).length;
         let isFinished = completedCount === this.runningBatches.length;
 
