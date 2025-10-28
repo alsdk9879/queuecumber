@@ -1,104 +1,143 @@
 class Queuecumber {
-    private items: (() => Promise<any>)[][] = []; // 작업 큐
+    version = "1.0.8"; // 버전 정보
+
+    private items: (() => Promise<any>)[] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
-    private runFlagCallback?: (flag: boolean) => void; // 실행 완료 콜백
     private batchSize: number = 1; // 한 번에 처리할 작업 수
+    private onProgress?: (progress: {
+        totalBatches: number; // 총 작업 묶음 수
+        completedBatches: number; // 완료된 작업 묶음 수
+        completed?: any[]; // 완료된 작업 결과 배열
+    }) => void; // 진행 상황 콜백
 
-    private _runFlag = false; // 실행 중인지 여부
-    private _lastResult: any = null; // 마지막 작업 결과
-
-    // 작업 완료 시 호출되는 콜백 (기본 구현)
-    public theEnd = () => {
-        console.log("Queue is empty now.");
-    };
+    private isRunning: boolean = false; // 실행 중인지 여부
+    private totalBatches: number = 0; // 총 작업 묶음 수
+    private completedBatches: number = 0; // 완료된 작업 묶음 수
+    private completed: any[] = []; // 완료된 작업 결과 배열
 
     constructor(option?: {
         breakWhenError?: boolean;
-        runFlagCallback?: (flag: boolean) => void;
-        batchSize?: number;
+        onProgress?: (progress: {
+            totalBatches: number;
+            completedBatches: number;
+            completed?: any[];
+        }) => void;
+        batchSize?: number; // 1 이상, 기본값 1
     }) {
-        this.breakWhenError = option?.breakWhenError || false;
-        this.batchSize = option?.batchSize || 1;
+        this.breakWhenError = !!option?.breakWhenError;
+        this.batchSize = option?.batchSize ?? 1;
 
-        if (option?.runFlagCallback) {
-            this.runFlagCallback = option?.runFlagCallback;
+        if (typeof this.batchSize !== "number" || this.batchSize < 1) {
+            throw new Error("batchSize must be at least 1");
         }
-    }
 
-    // 실행 중인 작업이 있는지 여부
-    get runFlag() {
-        return this._runFlag;
-    }
-
-    // 실행 상태 변경 시 콜백 호출
-    set runFlag(value: boolean) {
-        this._runFlag = value;
-        if (this.runFlagCallback && value === false) {
-            this.runFlagCallback(this._lastResult);
+        if (typeof option?.onProgress === "function") {
+            this.onProgress = option.onProgress;
         }
     }
 
     // 작업 배열을 한 번에 추가
-    async add(jobs: (() => Promise<any>)[], batchSize?: number) {
-        const size = batchSize || this.batchSize;
+    add(jobs: (() => Promise<any>)[] | (() => Promise<any>)) {
+        const size = this.batchSize;
 
-        // jobs를 batchSize 단위로 잘라서 배열로 묶기
-        for (let i = 0; i < jobs.length; i += size) {
-            const batch = jobs.slice(i, i + size);
-            this.items.push(batch);
+        // 처리가 처음이라면 초기화
+        const isFirstRun = !this.isRunning;
+        if (isFirstRun) {
+            this.isRunning = true;
+            this.totalBatches = 0;
+            this.completedBatches = 0;
+            this.completed = [];
         }
 
-        // 실행 중이 아니면 시작
-        if (!this.runFlag) {
-            this.runFlag = true;
-            await this.processNext(); // 다음 작업 묶음 처리 시작
+        // jobs가 배열인지 확인하고, 아니면 배열로 변환
+        const jobsArray = Array.isArray(jobs) ? jobs : [jobs];
+
+        // 배치로 묶지 않고 그냥 items에 추가
+        this.items.push(...jobsArray);
+
+        // // 총 배치 수 업데이트
+        this.totalBatches += Math.ceil(jobsArray.length / size);
+
+        // 첫 실행이면 processNext 호출
+        if (isFirstRun) {
+            // for문 모두 끝난 후 실행
+            Promise.resolve().then(() => {
+                // 초기 상태 알림
+                if (this.onProgress) {
+                    this.onProgress({
+                        totalBatches: this.totalBatches,
+                        completedBatches: this.completedBatches,
+                        completed: this.completed,
+                    });
+                }
+                // 첫 번째 배치 처리 시작
+                this.processNext();
+            });
         }
     }
 
     // 다음 작업 묶음 처리
-    private async processNext() {
+    processNext() {
         // 큐가 비었으면 종료
         if (this.items.length === 0) {
-            this.runFlag = false; // 실행 종료 (콜백 트리거)
-            this.theEnd();
+            this.isRunning = false; // 실행 종료
             return;
         }
 
-        // 첫 번째 배치 꺼내기
-        const batch = this.items.shift();
+        // batchSize만큼 꺼내기
+        const batch = this.items.splice(0, this.batchSize);
 
-        if (!batch) {
-            this.processNext();
-            return;
-        }
+        return new Promise((resolve) => {
+            let completedCount = 0; // 현재 배치에서 완료된 작업 개수
+            const results = new Array(batch.length); // 결과 저장 배열
 
-        try {
-            // 이번 배치 병렬 실행
-            const results = await Promise.all(
-                batch.map(async (job) => {
-                    try {
-                        return await job();
-                    } catch (err) {
+            // 배치 완료 처리 공통 함수
+            const handleBatchComplete = () => {
+                this.completedBatches++; // 완료된 배치 수 증가
+                this.completed.push(...results); // 전체 완료 결과에 현재 배치 결과 추가
+
+                // 진행 상황 콜백 호출
+                if (this.onProgress) {
+                    this.onProgress({
+                        totalBatches: this.totalBatches,
+                        completedBatches: this.completedBatches,
+                        completed: this.completed,
+                    });
+                }
+
+                resolve(this.completed); // 현재까지 완료된 결과 반환
+                this.processNext(); // 다음 배치 처리
+            };
+
+            // 배치의 각 작업 처리
+            batch.forEach((job: () => Promise<any>, index: number) => {
+                job()
+                    .then((result) => {
+                        results[index] = result;
+                        completedCount++; // 완료 카운트 증가
+
+                        // 배치의 모든 job이 완료되었는지 확인
+                        if (completedCount === batch.length) {
+                            handleBatchComplete();
+                        }
+                    })
+                    .catch((err) => {
+                        // 에러 처리
                         if (this.breakWhenError) {
+                            this.isRunning = false; // breakWhenError가 true면 즉시 중단
                             throw err;
                         }
-                        return null; // 에러 무시
-                    }
-                })
-            );
 
-            // 마지막 결과 저장 (배치의 마지막 작업 결과)
-            this._lastResult = results[results.length - 1];
+                        // breakWhenError가 false면 에러를 결과에 포함하고 계속 진행
+                        results[index] = err;
+                        completedCount++;
 
-            console.log(`✅ Batch 완료 (${batch.length}개)`);
-        } catch (err) {
-            // breakWhenError가 true면 여기서 중단
-            this.runFlag = false;
-            throw err;
-        }
-
-        // 다음 배치 처리
-        await this.processNext();
+                        if (completedCount === batch.length) {
+                            handleBatchComplete();
+                        }
+                    });
+            });
+        });
     }
 }
 

@@ -1,10 +1,11 @@
 {
     "name": "queuecumber",
-    "version": "1.0.0",
+    "version": "1.0.8",
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "npx tsc --project tsconfig.json"
     },
     "author": "",
     "license": "ISC",

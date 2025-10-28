@@ -1,67 +1,150 @@
 # Queuecumber
 
-Queuecumber는 **작업을 순서대로 처리**하는 JavaScript/TypeScript 큐 라이브러리입니다.  
-배치 단위 실행, 에러 처리 옵션, 작업 완료 콜백 등을 지원합니다.
+Queuecumber is a JavaScript/TypeScript queue library for processing tasks sequentially.
+It supports batch execution, error handling options, and progress callbacks.
 
 ## 📌 Getting started
 
-```bash
-# npm
+```js
 npm install queuecumber
-
-# yarn
-yarn add queuecumber
 ```
 
 ## 📌 Usage
 
-### Basic uses
+### Basic usage
 
-```bash
+```js
 import Queuecumber from "queuecumber";
 
 const queue = new Queuecumber();
 
-const job1 = () => Promise.resolve("job1 완료");
-const job2 = () => Promise.resolve("job2 완료");
+const job1 = () => Promise.resolve("job1 completed");
+const job2 = () => Promise.resolve("job2 completed");
 
 queue.add([job1, job2]);
 ```
 
 ### Option
 
-```bash
+You can configure options when creating a Queuecumber instance.
+
+```ts
 const queue = new Queuecumber({
-    batchSize: 2,           // 한 번에 처리할 작업 수
-    breakWhenError: false,  // 에러 발생 시 중단 여부
-    runFlagCallback: (lastResult) => {
-        console.log("모든 작업 완료! 마지막 결과:", lastResult);
-    }
+    breakWhenError?: boolean;
+    onProgress?: (progress: {
+        totalBatches: number;
+        completedBatches: number;
+        completed?: any[];
+    }) => void;
+    batchSize?: number; // must be ≥ 1, default is 1
 });
 ```
 
-### Customizing
+### 🔍 OnProgress
 
-```bash
-// theEnd
-queue.theEnd = () => {
-    console.log("🎉 모든 작업 끝!");
-};
+The onProgress callback runs when the queue starts and after each batch is completed.
+
+```js
+const queue = new Queuecumber({
+    batchSize: 2,
+    onProgress: (progress) => {
+        console.log(progress);
+    },
+});
+
+await queue.add([
+    () => Promise.resolve("Job 1"),
+    () => Promise.resolve("Job 2"),
+    () => Promise.resolve("Job 3"),
+    () => Promise.resolve("Job 4"),
+]);
+
+// { totalBatches: 2, completedBatches: 0, completed: [] }
+// { totalBatches: 2, completedBatches: 1, completed: ["Job 1", "Job 2"] }
+// { totalBatches: 2, completedBatches: 2, completed: ["Job 1", "Job 2", "Job 3", "Job 4"] }
 ```
 
-### Check status
+## ❗Handling Errors
 
-```bash
-console.log(queue.runFlag); // 실행 중인지 여부
+Queuecumber lets you choose whether to stop on error or continue execution when an error occurs.
+<br>
+This behavior is controlled via the breakWhenError option.
+
+### ✅ Continue execution even on errors (breakWhenError: false)
+
+```js
+const queue = new Queuecumber({
+    breakWhenError: false, // default
+    onProgress: (progress) => {
+        console.log("Completed jobs: ", progress.completed);
+    },
+});
+
+const jobs = [
+    () => Promise.resolve("First success"),
+    () => Promise.reject("Second failed ❌"),
+    () => Promise.resolve("Third success ✅"),
+];
+
+await queue.add(jobs);
+```
+
+Result
+
+```js
+Completed jobs: []
+Completed jobs: ["First success", "Second failed ❌", "Third success"]
+// Errors are stored as error objects and execution continues.
+```
+
+### 🛑 Stop immediately on error (breakWhenError: true)
+
+```js
+const queue = new Queuecumber({
+    breakWhenError: true,
+    onProgress: (progress) => {
+        console.log(`Completed jobs:: `, progress.completed);
+    },
+});
+
+const jobs = [
+    () => Promise.resolve("First success"),
+    () => Promise.reject("Second failed ❌"),
+    () => Promise.resolve("Third will not run 🚫"),
+];
+
+try {
+    await queue.add(jobs);
+} catch (err) {
+    console.error("Execution stopped: ", err);
+}
+```
+
+Result
+
+```js
+Completed jobs: []
+Completed jobs: ["First success"]
+Execution stopped: Second failed ❌
+// Stops immediately on error, so the third job is never executed.
 ```
 
 ## 📌 Practical Example
 
-```bash
+```js
+const queue = new Queuecumber({
+    batchSize: 5,
+    onProgress: (progress) => {
+        console.log(
+            `Batch ${progress.completedBatches}/${progress.totalBatches} 완료`
+        );
+    },
+});
+
 const jobs = [];
 
 for (let i = 0; i < 100; i++) {
-    jobs.push(() => fetch(`/api/data/${i}`).then(res => res.json()));
+    jobs.push(() => fetch(`/api/data/${i}`).then((res) => res.json()));
 }
 
 queue.add(jobs);
@@ -69,12 +152,14 @@ queue.add(jobs);
 
 ## 📌 Features
 
-• 배치 단위 처리(batchSize)
+• Batch processing (batchSize) — control how many jobs run in parallel
 <br>
-• 에러 발생 시 중단 여부(breakWhenError)
+• Error control (breakWhenError) — choose whether to stop or continue on failure
 <br>
-• 마지막 결과 전달(runFlagCallback)
+• Progress tracking (onProgress) — monitor task progress in real time
 <br>
-• 큐 완료 후 커스텀 동작 가능(theEnd)
-<br>
-• 실행 상태 확인(runFlag)
+• Execution state (isRunning) — check whether the queue is currently running
+
+## 📜 License
+
+MIT © 2025 Oh Mina
