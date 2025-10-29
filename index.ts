@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.8"; // 버전 정보
+    version = "1.0.9"; // 버전 정보
 
     private items: (() => Promise<any>)[] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
@@ -8,10 +8,8 @@ class Queuecumber {
         batchToProcess: number; // 남은 총 작업 묶음 수
         itemsToProcess?: number; // 남은 작업 수
         completed?: any[]; // 완료된 작업 결과 배열
-        // completedBatches: number; // 완료된 작업 묶음 수 // 의미 없음. 묶음이 완료되면 onProgress가 호출되고 언제까지 completedBatches를 들고있어야 할지 알 수 없기 때문
     }) => void; // 진행 상황 콜백
 
-    private isRunning: boolean = false; // 실행 중인지 여부
     private completed: any[] = []; // 완료된 작업 결과 배열
     private runningBatches: (() => Promise<any>)[] = []; // 현재 실행 중인 작업 묶음 수
 
@@ -61,20 +59,22 @@ class Queuecumber {
 
         if (typeof option?.onProgress === "function") {
             this.onProgress = option.onProgress;
+        } else {
+            throw new Error("onProgress must be a function");
         }
     }
 
     // 작업 배열을 한 번에 추가
     add(jobs: (() => Promise<any>)[] | (() => Promise<any>)) {
-        const size = this.batchSize;
-
         // jobs가 배열인지 확인하고, 아니면 배열로 변환
         const jobsArray = Array.isArray(jobs) ? jobs : [jobs];
 
         // jobsArray의 각 작업이 함수인지 확인, 맞으면 큐에 추가
         for (const job of jobsArray) {
             if (typeof job !== "function") {
-                throw new Error("Each job must be a function that returns a Promise");
+                throw new Error(
+                    "Each job must be a function that returns a Promise"
+                );
             }
             this.items.push(job);
         }
@@ -98,33 +98,35 @@ class Queuecumber {
         // batchToRun 만큼 꺼내기
         this.runningBatches.push(...this.items.splice(0, batchToRun));
 
-        for(let i = 0; i < this.runningBatches.length; i++) {
-            (this.runningBatches[i] as () => Promise<any>)().then(result =>{
-                if(this.completed[i]) {
+        for (let i = 0; i < this.runningBatches.length; i++) {
+            (this.runningBatches[i] as () => Promise<any>)()
+                .then((result) => {
+                    if (this.completed[i]) {
+                        return result;
+                    }
+
+                    this.completed[i] = result;
+
+                    if (this.batchProcessFinished) {
+                        return this.processNext();
+                    }
+
                     return result;
-                }
+                })
+                .catch((err) => {
+                    // 에러 처리
+                    if (this.breakWhenError) {
+                        throw err;
+                    }
 
-                this.completed[i] = result;
+                    this.completed[i] = err;
 
-                if(this.batchProcessFinished) {
-                    return this.processNext();
-                }
+                    if (this.batchProcessFinished) {
+                        return this.processNext();
+                    }
 
-                return result;
-            }).catch((err) => {
-                // 에러 처리
-                if (this.breakWhenError) {
-                    throw err;
-                }
-
-                this.completed[i] = err;
-
-                if(this.batchProcessFinished) {
-                    return this.processNext();
-                }
-
-                return err;
-            });
+                    return err;
+                });
         }
     }
 }

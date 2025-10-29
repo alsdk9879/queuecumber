@@ -1,10 +1,9 @@
 class Queuecumber {
-    version = "1.0.8"; // 버전 정보
+    version = "1.0.9"; // 버전 정보
     items = []; // 작업 큐
     breakWhenError = false; // 에러 발생 시 중단 여부
     batchSize = 1; // 한 번에 처리할 작업 수
     onProgress; // 진행 상황 콜백
-    isRunning = false; // 실행 중인지 여부
     completed = []; // 완료된 작업 결과 배열
     runningBatches = []; // 현재 실행 중인 작업 묶음 수
     get batchToProcess() {
@@ -38,10 +37,12 @@ class Queuecumber {
         if (typeof option?.onProgress === "function") {
             this.onProgress = option.onProgress;
         }
+        else {
+            throw new Error("onProgress must be a function");
+        }
     }
     // 작업 배열을 한 번에 추가
     add(jobs) {
-        const size = this.batchSize;
         // jobs가 배열인지 확인하고, 아니면 배열로 변환
         const jobsArray = Array.isArray(jobs) ? jobs : [jobs];
         // jobsArray의 각 작업이 함수인지 확인, 맞으면 큐에 추가
@@ -67,7 +68,8 @@ class Queuecumber {
         // batchToRun 만큼 꺼내기
         this.runningBatches.push(...this.items.splice(0, batchToRun));
         for (let i = 0; i < this.runningBatches.length; i++) {
-            this.runningBatches[i]().then(result => {
+            this.runningBatches[i]()
+                .then((result) => {
                 if (this.completed[i]) {
                     return result;
                 }
@@ -76,7 +78,8 @@ class Queuecumber {
                     return this.processNext();
                 }
                 return result;
-            }).catch((err) => {
+            })
+                .catch((err) => {
                 // 에러 처리
                 if (this.breakWhenError) {
                     throw err;

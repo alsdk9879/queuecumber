@@ -25,23 +25,22 @@ const onProgress = ({ batchToProcess, itemsToProcess, completed }) => {
     console.log(`남은 작업 수: ${itemsToProcess}`);
     console.log(
         "완료된 작업:",
-        completed.map((r) =>
-            r instanceof Error ? `Error: ${r.message}` : r
-        )
+        completed.map((r) => (r instanceof Error ? `Error: ${r.message}` : r))
     );
+
     console.log("---");
 
     if (itemsToProcess === 0) {
         console.log("🚀 Queuecumber 테스트 완료");
-        
-        if(!did2ndTest) {
+
+        if (!did2ndTest) {
             console.log("\n🚀 Queuecumber 배열 추가 2차 테스트 시작\n");
-            
+
             did2ndTest = true;
             testArray();
         }
     }
-}
+};
 
 const queue = new Queuecumber({
     breakWhenError: false,
@@ -53,14 +52,14 @@ const testLoop = () => {
     for (let i = 1; i <= 14; i++) {
         queue.add(createJob(i, 800, i % 3 === 0)); // 3의 배수는 실패
     }
-}
+};
 
 testLoop();
 
 const testArray = () => {
     let jobs = [];
     for (let i = 1; i <= 14; i++) {
-        jobs.push( createJob(i, 800, i % 3 === 0) ); // 3의 배수는 실패
+        jobs.push(createJob(i, 800, i % 3 === 0)); // 3의 배수는 실패
     }
     queue.add(jobs);
-}
+};
