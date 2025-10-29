@@ -32,9 +32,9 @@ You can configure options when creating a Queuecumber instance.
 const queue = new Queuecumber({
     breakWhenError?: boolean;
     onProgress?: (progress: {
-        batchToProcess: number;
-        completedBatches: number;
-        completed?: any[];
+        batchToProcess: number; // Total number of batches remaining
+        itemsToProcess: number; // Total remaining tasks
+        completed?: any[]; // Array of completed task results
     }) => void;
     batchSize?: number; // must be ≥ 1, default is 1
 });
@@ -59,9 +59,9 @@ await queue.add([
     () => Promise.resolve("Job 4"),
 ]);
 
-// { batchToProcess: 2, completedBatches: 0, completed: [] }
-// { batchToProcess: 2, completedBatches: 1, completed: ["Job 1", "Job 2"] }
-// { batchToProcess: 2, completedBatches: 2, completed: ["Job 1", "Job 2", "Job 3", "Job 4"] }
+// Example output:
+// { batchToProcess: 1, itemsToProcess: 2, completed: ["Job 1", "Job 2"] }
+// { batchToProcess: 0, itemsToProcess: 0, completed: ["Job 3", "Job 4"] }
 ```
 
 ## ❗Handling Errors
@@ -92,8 +92,8 @@ await queue.add(jobs);
 Result
 
 ```js
-Completed jobs: []
-Completed jobs: ["First success", "Second failed ❌", "Third success"]
+Completed jobs: ["First success"]
+Completed jobs: ["First success", "Second failed ❌", "Third success ✅"]
 // Errors are stored as error objects and execution continues.
 ```
 
@@ -123,7 +123,6 @@ try {
 Result
 
 ```js
-Completed jobs: []
 Completed jobs: ["First success"]
 Execution stopped: Second failed ❌
 // Stops immediately on error, so the third job is never executed.
@@ -136,7 +135,7 @@ const queue = new Queuecumber({
     batchSize: 5,
     onProgress: (progress) => {
         console.log(
-            `Batch ${progress.completedBatches}/${progress.batchToProcess} 완료`
+            `Remaining batches: ${progress.batchToProcess}, Remaining tasks: ${progress.itemsToProcess}`
         );
     },
 });

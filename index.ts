@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.8"; // 버전 정보
+    version = "1.0.9"; // 버전 정보
 
     private items: (() => Promise<any>)[] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
@@ -59,6 +59,8 @@ class Queuecumber {
 
         if (typeof option?.onProgress === "function") {
             this.onProgress = option.onProgress;
+        } else {
+            throw new Error("onProgress must be a function");
         }
     }
 
