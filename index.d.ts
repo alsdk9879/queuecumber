@@ -12,8 +12,8 @@ declare class Queuecumber {
         breakWhenError?: boolean;
         onProgress?: (progress: {
             batchToProcess: number;
-            itemsToProcess?: number;
-            completed?: any[];
+            itemsToProcess: number;
+            completed: any[];
         }) => void;
         batchSize?: number;
     });

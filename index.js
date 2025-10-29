@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.9"; // 버전 정보
+    version = "1.0.10"; // 버전 정보
     items = []; // 작업 큐
     breakWhenError = false; // 에러 발생 시 중단 여부
     batchSize = 1; // 한 번에 처리할 작업 수
@@ -34,11 +34,13 @@ class Queuecumber {
         if (typeof this.batchSize !== "number" || this.batchSize < 1) {
             throw new Error("batchSize must be at least 1");
         }
-        if (typeof option?.onProgress === "function") {
-            this.onProgress = option.onProgress;
-        }
-        else {
-            throw new Error("onProgress must be a function");
+        if (option?.onProgress) {
+            if (typeof option.onProgress === "function") {
+                this.onProgress = option.onProgress;
+            }
+            else {
+                throw new Error("onProgress must be a function");
+            }
         }
     }
     // 작업 배열을 한 번에 추가

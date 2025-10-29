@@ -1,13 +1,13 @@
 class Queuecumber {
-    version = "1.0.9"; // 버전 정보
+    version = "1.0.10"; // 버전 정보
 
     private items: (() => Promise<any>)[] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
     private batchSize: number = 1; // 한 번에 처리할 작업 수
     private onProgress?: (progress: {
         batchToProcess: number; // 남은 총 작업 묶음 수
-        itemsToProcess?: number; // 남은 작업 수
-        completed?: any[]; // 완료된 작업 결과 배열
+        itemsToProcess: number; // 남은 작업 수
+        completed: any[]; // 완료된 작업 결과 배열
     }) => void; // 진행 상황 콜백
 
     private completed: any[] = []; // 완료된 작업 결과 배열
@@ -45,8 +45,8 @@ class Queuecumber {
         breakWhenError?: boolean;
         onProgress?: (progress: {
             batchToProcess: number;
-            itemsToProcess?: number;
-            completed?: any[];
+            itemsToProcess: number;
+            completed: any[];
         }) => void;
         batchSize?: number; // 1 이상, 기본값 1
     }) {
@@ -57,10 +57,12 @@ class Queuecumber {
             throw new Error("batchSize must be at least 1");
         }
 
-        if (typeof option?.onProgress === "function") {
-            this.onProgress = option.onProgress;
-        } else {
-            throw new Error("onProgress must be a function");
+        if (option?.onProgress) {
+            if (typeof option.onProgress === "function") {
+                this.onProgress = option.onProgress;
+            } else {
+                throw new Error("onProgress must be a function");
+            }
         }
     }
 
