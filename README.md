@@ -32,7 +32,7 @@ You can configure options when creating a Queuecumber instance.
 const queue = new Queuecumber({
     breakWhenError?: boolean;
     onProgress?: (progress: {
-        totalBatches: number;
+        batchToProcess: number;
         completedBatches: number;
         completed?: any[];
     }) => void;
@@ -59,9 +59,9 @@ await queue.add([
     () => Promise.resolve("Job 4"),
 ]);
 
-// { totalBatches: 2, completedBatches: 0, completed: [] }
-// { totalBatches: 2, completedBatches: 1, completed: ["Job 1", "Job 2"] }
-// { totalBatches: 2, completedBatches: 2, completed: ["Job 1", "Job 2", "Job 3", "Job 4"] }
+// { batchToProcess: 2, completedBatches: 0, completed: [] }
+// { batchToProcess: 2, completedBatches: 1, completed: ["Job 1", "Job 2"] }
+// { batchToProcess: 2, completedBatches: 2, completed: ["Job 1", "Job 2", "Job 3", "Job 4"] }
 ```
 
 ## ❗Handling Errors
@@ -136,7 +136,7 @@ const queue = new Queuecumber({
     batchSize: 5,
     onProgress: (progress) => {
         console.log(
-            `Batch ${progress.completedBatches}/${progress.totalBatches} 완료`
+            `Batch ${progress.completedBatches}/${progress.batchToProcess} 완료`
         );
     },
 });
