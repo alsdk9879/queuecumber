@@ -4,11 +4,10 @@ declare class Queuecumber {
     private breakWhenError;
     private batchSize;
     private onProgress?;
-    private isRunning;
     private completed;
     private runningBatches;
-    get batchToProcess(): number;
-    get batchProcessFinished(): boolean;
+    private get batchToProcess();
+    private get batchProcessFinished();
     constructor(option?: {
         breakWhenError?: boolean;
         onProgress?: (progress: {
