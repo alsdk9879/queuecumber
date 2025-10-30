@@ -1,11 +1,12 @@
 class Queuecumber {
-    version = "1.0.10"; // 버전 정보
+    version = "1.0.11"; // 버전 정보
     items = []; // 작업 큐
     breakWhenError = false; // 에러 발생 시 중단 여부
     batchSize = 1; // 한 번에 처리할 작업 수
     onProgress; // 진행 상황 콜백
     completed = []; // 완료된 작업 결과 배열
     runningBatches = []; // 현재 실행 중인 작업 묶음 수
+    runningSlots = []; // 실행 중인 슬롯 상태 배열
     get batchToProcess() {
         // 총 배치 수 업데이트
         return Math.ceil(this.items.length / this.batchSize);
@@ -18,6 +19,7 @@ class Queuecumber {
             // 콜백 호출전 미리 상태 초기화
             this.completed = [];
             this.runningBatches = [];
+            this.runningSlots = [];
             if (this.onProgress) {
                 this.onProgress({
                     batchToProcess: this.batchToProcess,
@@ -70,6 +72,10 @@ class Queuecumber {
         // batchToRun 만큼 꺼내기
         this.runningBatches.push(...this.items.splice(0, batchToRun));
         for (let i = 0; i < this.runningBatches.length; i++) {
+            if (this.runningSlots?.[i]) {
+                continue;
+            }
+            this.runningSlots[i] = true;
             this.runningBatches[i]()
                 .then((result) => {
                 if (this.completed[i]) {

@@ -6,6 +6,7 @@ declare class Queuecumber {
     private onProgress?;
     private completed;
     private runningBatches;
+    private runningSlots;
     private get batchToProcess();
     private get batchProcessFinished();
     constructor(option?: {

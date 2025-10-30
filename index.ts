@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.10"; // 버전 정보
+    version = "1.0.11"; // 버전 정보
 
     private items: (() => Promise<any>)[] = []; // 작업 큐
     private breakWhenError: boolean = false; // 에러 발생 시 중단 여부
@@ -12,7 +12,7 @@ class Queuecumber {
 
     private completed: any[] = []; // 완료된 작업 결과 배열
     private runningBatches: (() => Promise<any>)[] = []; // 현재 실행 중인 작업 묶음 수
-    private runningSlots: [boolean][] = []; // 실행 중인 슬롯 상태 배열
+    private runningSlots: boolean[] = []; // 실행 중인 슬롯 상태 배열
 
     private get batchToProcess() {
         // 총 배치 수 업데이트
@@ -103,7 +103,7 @@ class Queuecumber {
         this.runningBatches.push(...this.items.splice(0, batchToRun));
 
         for (let i = 0; i < this.runningBatches.length; i++) {
-            if(this.runningSlots?.[i]) {
+            if (this.runningSlots?.[i]) {
                 continue;
             }
 
