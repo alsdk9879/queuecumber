@@ -20,6 +20,7 @@ declare class Queuecumber {
     });
     add(jobs: (() => Promise<any>)[] | (() => Promise<any>)): void;
     private processNext;
+    terminate(): void;
 }
 export default Queuecumber;
 //# sourceMappingURL=index.d.ts.map

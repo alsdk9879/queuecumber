@@ -23,6 +23,9 @@ let did2ndTest = false;
 const onProgress = ({ batchToProcess, itemsToProcess, completed }) => {
     console.log(`남은 묶음 수: ${batchToProcess}`);
     console.log(`남은 작업 수: ${itemsToProcess}`);
+    if(itemsToProcess === 5) {
+        queue.terminate();
+    }
     console.log(
         "완료된 작업:",
         completed.map((r) => (r instanceof Error ? `Error: ${r.message}` : r))

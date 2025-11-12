@@ -138,6 +138,11 @@ class Queuecumber {
                 });
         }
     }
+
+    terminate() {
+        // 그 다음 작업부터 모두 제거
+        this.items = [];
+    }
 }
 
 export default Queuecumber;
