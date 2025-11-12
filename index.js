@@ -1,5 +1,5 @@
 class Queuecumber {
-    version = "1.0.11"; // 버전 정보
+    version = "1.0.12"; // 버전 정보
     items = []; // 작업 큐
     breakWhenError = false; // 에러 발생 시 중단 여부
     batchSize = 1; // 한 번에 처리할 작업 수
