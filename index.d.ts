@@ -6,6 +6,7 @@ declare class Queuecumber {
     private onProgress?;
     private completed;
     private runningBatches;
+    private runningSlots;
     private get batchToProcess();
     private get batchProcessFinished();
     constructor(option?: {
@@ -19,6 +20,7 @@ declare class Queuecumber {
     });
     add(jobs: (() => Promise<any>)[] | (() => Promise<any>)): void;
     private processNext;
+    terminate(): void;
 }
 export default Queuecumber;
 //# sourceMappingURL=index.d.ts.map

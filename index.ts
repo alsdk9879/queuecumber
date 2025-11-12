@@ -12,7 +12,7 @@ class Queuecumber {
 
     private completed: any[] = []; // 완료된 작업 결과 배열
     private runningBatches: (() => Promise<any>)[] = []; // 현재 실행 중인 작업 묶음 수
-    private runningSlots: [boolean][] = []; // 실행 중인 슬롯 상태 배열
+    private runningSlots: boolean[] = []; // 실행 중인 슬롯 상태 배열
 
     private get batchToProcess() {
         // 총 배치 수 업데이트
@@ -137,6 +137,11 @@ class Queuecumber {
                     return err;
                 });
         }
+    }
+
+    terminate() {
+        // 그 다음 작업부터 모두 제거
+        this.items = [];
     }
 }
 
