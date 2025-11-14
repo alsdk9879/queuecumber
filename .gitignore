@@ -1,9 +1,14 @@
 # dependencies
 node_modules/
 
-# build output
-dist/
+# build output - dist/ will be published to npm
 coverage/
+
+# old build artifacts (now using dist/)
+/index.js
+/index.d.ts
+/index.js.map
+/index.d.ts.map
 
 # environment files
 .env
@@ -12,4 +17,3 @@ coverage/
 # misc
 *.log
 *.DS_Store
-*.map

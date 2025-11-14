@@ -1,4 +1,4 @@
-import Queuecumber from "./index.js";
+import Queuecumber from "./dist/index.js";
 
 // 작업 생성기
 const createJob =
